@@ -105,7 +105,7 @@ def register_exception_handlers(app: FastAPI):
     )
 
     @app.exception_handler(NotEnoughQuestionsException)
-    async def not_enough_questions_handler(request, exc):
+    async def not_enough_questions_handler(request: Request, exc: NotEnoughQuestionsException):
         return JSONResponse(
             status_code=400,
             content={

@@ -14,6 +14,14 @@ class Settings(BaseSettings):
     # OpenAI (optional)
     OPENAI_API_KEY: str = ""
 
+        # Email Verification
+    SMTP_HOST: str = ""
+    SMTP_PORT: int = 587
+    SMTP_USERNAME: str = ""
+    SMTP_PASSWORD: str = ""
+    SMTP_FROM_EMAIL: str = ""
+    FRONTEND_URL: str = "http://localhost:3000"
+    
     # Environment & Application Settings
     ENVIRONMENT: str = "development"
     PROJECT_NAME: str = "AI Proctored Online Examination System"

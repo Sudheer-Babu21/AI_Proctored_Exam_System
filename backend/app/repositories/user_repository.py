@@ -19,6 +19,18 @@ class UserRepository:
         return db.scalar(stmt)
 
     @staticmethod
+    def get_by_verification_token(
+        db: Session,
+        token: str,
+    ) -> User | None:
+
+        stmt = select(User).where(
+            User.verification_token == token
+        )
+
+        return db.scalar(stmt)
+    
+    @staticmethod
     def get_by_id(
         db: Session,
         user_id: int,

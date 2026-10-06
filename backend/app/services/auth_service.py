@@ -1,14 +1,22 @@
+from datetime import datetime, timedelta, timezone
+import secrets
+from app.services.email_service import send_verification_email
 from sqlalchemy.orm import Session
+
 from app.exceptions.auth import (
     EmailAlreadyExistsException,
     InvalidCredentialsException,
     InactiveUserException,
+    EmailNotVerifiedException,
+    UserNotFoundException,
 )
+
 from app.core.security import (
     hash_password,
     verify_password,
     create_access_token,
 )
+
 from app.models.users import User
 from app.repositories.user_repository import UserRepository
 from app.schemas.auth import RegisterRequest, LoginRequest
@@ -22,19 +30,68 @@ class AuthService:
         data: RegisterRequest,
     ) -> User:
 
-        # Email already exists?
         if UserRepository.exists_by_email(db, data.email):
             raise EmailAlreadyExistsException()
 
-        # Create User
+        verification_token = secrets.token_urlsafe(32)
+
+        verification_expires_at = (
+            datetime.now(timezone.utc) + timedelta(hours=24)
+        )
+
         user = User(
             name=data.name,
             email=data.email,
             password_hash=hash_password(data.password),
             role=data.role,
+            is_verified=False,
+            verification_token=verification_token,
+            verification_token_expires_at=verification_expires_at,
         )
 
-        return UserRepository.create(db, user)
+        user = UserRepository.create(db, user)
+
+        send_verification_email(
+            recipient_email=user.email,
+            recipient_name=user.name,
+            verification_token=verification_token,
+        )
+
+        return user
+
+    @staticmethod
+    def verify_email(
+        db: Session,
+        token: str,
+    ) -> User:
+
+        user = UserRepository.get_by_verification_token(
+            db,
+            token,
+        )
+
+        if not user:
+            raise UserNotFoundException()
+
+        if user.is_verified:
+            return user
+
+        if (
+            not user.verification_token_expires_at
+            or user.verification_token_expires_at
+            < datetime.now(timezone.utc).replace(tzinfo=None)
+        ):
+            
+            raise InvalidCredentialsException()
+
+        user.is_verified = True
+        user.verification_token = None
+        user.verification_token_expires_at = None
+
+        return UserRepository.update(
+            db,
+            user,
+        )   
 
     @staticmethod
     def login(
@@ -52,6 +109,9 @@ class AuthService:
             user.password_hash,
         ):
             raise InvalidCredentialsException()
+
+        if not user.is_verified:
+            raise EmailNotVerifiedException()
 
         if not user.is_active:
             raise InactiveUserException()
@@ -72,14 +132,19 @@ class AuthService:
         db: Session,
         data: "GoogleLoginRequest",
     ) -> tuple[str, User]:
-        import secrets
+
         from app.core.enums import UserRole
 
-        user = UserRepository.get_by_email(db, data.email)
+        user = UserRepository.get_by_email(
+            db,
+            data.email,
+        )
 
         if not user:
             assigned_role = data.role or UserRole.STUDENT
+
             random_pass = secrets.token_urlsafe(32)
+
             user = User(
                 name=data.name or data.email.split("@")[0].capitalize(),
                 email=data.email,
@@ -88,7 +153,11 @@ class AuthService:
                 is_active=True,
                 is_verified=True,
             )
-            user = UserRepository.create(db, user)
+
+            user = UserRepository.create(
+                db,
+                user,
+            )
 
         if not user.is_active:
             raise InactiveUserException()
@@ -102,4 +171,4 @@ class AuthService:
             }
         )
 
-        return token, user
+        return token, user

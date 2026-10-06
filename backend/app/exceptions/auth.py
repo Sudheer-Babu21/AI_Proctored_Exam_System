@@ -40,6 +40,15 @@ class InactiveUserException(HTTPException):
             detail="User account is inactive."
         )
 
+class EmailNotVerifiedException(HTTPException):
+
+    def __init__(self):
+
+        super().__init__(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Please verify your email before logging in."
+        )
+
 from fastapi import HTTPException, status
 
 

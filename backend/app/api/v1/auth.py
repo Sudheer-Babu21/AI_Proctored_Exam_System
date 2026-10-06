@@ -109,4 +109,20 @@ def google_login(
 def get_me(
     current_user: User = Depends(get_current_user),
 ):
-    return current_user
+    return current_user
+
+
+@router.get("/verify-email")
+def verify_email(
+    token: str,
+    db: Session = Depends(get_db),
+):
+    user = AuthService.verify_email(
+        db=db,
+        token=token,
+    )
+
+    return {
+        "message": "Email verified successfully. You can now log in.",
+        "email": user.email,
+    }

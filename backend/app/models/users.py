@@ -1,4 +1,5 @@
-from sqlalchemy import String
+from datetime import datetime
+from sqlalchemy import String,DateTime
 from sqlalchemy import Enum as SqlEnum
 from sqlalchemy.orm import Mapped, mapped_column
 from sqlalchemy.orm import relationship
@@ -51,6 +52,17 @@ class User(
     is_verified: Mapped[bool] = mapped_column(
         default=False,
         nullable=False
+    )
+
+    verification_token: Mapped[str | None] = mapped_column(
+        String(255),
+        unique=True,
+        nullable=True
+    )
+
+    verification_token_expires_at: Mapped[datetime | None] = mapped_column(
+        DateTime,
+        nullable=True
     )
 
     exam_sessions = relationship(
